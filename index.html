@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon solde de congés payés — Groupe Edgard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1b18; --paper:#faf8f3; --card:#ffffff; --line:#e7e2d8;
+    --muted:#6c685f; --soft:#f3f0e8;
+    /* accent neutre (groupe), remplacé dynamiquement par la marque du magasin */
+    --accent:#9a7b3f; --accent-soft:#f4efe2; --accent-ink:#6f5827;
+    --err:#b3261e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    color:var(--ink); background:var(--paper);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{width:100%; max-width:440px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:32px 30px; box-shadow:0 1px 2px rgba(0,0,0,.03),0 14px 40px -24px rgba(0,0,0,.18);
+    position:relative; overflow:hidden;
+  }
+  .card::before{
+    content:""; position:absolute; left:0; right:0; top:0; height:4px;
+    background:var(--accent); transition:background .3s ease;
+  }
+  .eyebrow{
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; margin:2px 0 10px;
+  }
+  h1{
+    font-family:"Playfair Display",Georgia,serif; font-weight:600;
+    font-size:26px; line-height:1.2; margin:0 0 8px; letter-spacing:-.01em;
+  }
+  .lede{color:var(--muted); font-size:14.5px; margin:0 0 24px}
+
+  form{display:flex; flex-direction:column; gap:16px}
+  label{font-size:13px; font-weight:600; margin-bottom:6px; display:block}
+  .field{display:flex; flex-direction:column}
+  select,input{
+    width:100%; font:inherit; color:var(--ink);
+    padding:12px 13px; border:1px solid var(--line); border-radius:11px;
+    background:var(--card); transition:border-color .15s, box-shadow .15s;
+  }
+  select{appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236c685f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 13px center; padding-right:38px;
+  }
+  select:focus,input:focus{
+    outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  input::placeholder{color:#b6b1a5; letter-spacing:.3em}
+  #code{letter-spacing:.35em; font-weight:600}
+
+  .btn{
+    appearance:none; border:0; cursor:pointer; font:inherit; font-weight:600;
+    padding:13px 16px; border-radius:11px; color:#fff; background:var(--accent);
+    transition:filter .15s, transform .04s; font-size:15px;
+  }
+  .btn:hover{filter:brightness(.94)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+
+  .err{
+    color:var(--err); font-size:13.5px; font-weight:500; margin:0;
+    display:flex; gap:7px; align-items:flex-start;
+  }
+  .err svg{flex:0 0 auto; margin-top:1px}
+
+  /* Écran de confirmation */
+  #done{display:none}
+  #done.show{display:block}
+  .ok-badge{
+    display:inline-flex; align-items:center; gap:9px;
+    background:var(--accent-soft); color:var(--accent-ink);
+    border-radius:11px; padding:11px 14px; font-weight:600; font-size:14px;
+    margin-bottom:18px;
+  }
+  .ok-badge .mag{font-size:15px}
+  .ok-badge svg{flex:0 0 auto}
+  .done-lede{color:var(--muted); font-size:14.5px; margin:0 0 20px}
+  .open-row{display:flex; flex-direction:column; gap:10px}
+  .link-btn{
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    text-decoration:none; text-align:center;
+  }
+  .ghost{
+    background:transparent; color:var(--muted); border:1px solid var(--line);
+    font-weight:500; font-size:13.5px;
+  }
+  .ghost:hover{filter:none; background:var(--soft)}
+
+  footer{
+    color:var(--muted); font-size:12px; text-align:center;
+    margin-top:18px; line-height:1.5;
+  }
+  @media (max-width:480px){ .card{padding:26px 20px} h1{font-size:23px} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <!-- ÉTAPE 1 : saisie -->
+      <div id="gate">
+        <p class="eyebrow">Groupe Edgard · Ressources humaines</p>
+        <h1>Mon solde de congés payés</h1>
+        <p class="lede">Sélectionnez votre magasin et saisissez votre code pour accéder au décompte de vos congés.</p>
+
+        <form id="form" autocomplete="off">
+          <div class="field">
+            <label for="magasin">Votre magasin</label>
+            <select id="magasin" required>
+              <option value="" disabled selected>Choisir un magasin…</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="code">Votre code</label>
+            <input id="code" type="password" inputmode="numeric" autocomplete="off"
+                   placeholder="••••" aria-label="Code du magasin" maxlength="8">
+          </div>
+          <button class="btn" type="submit">Accéder à mon solde</button>
+          <p class="err" id="err" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+            <span id="errTxt"></span>
+          </p>
+        </form>
+      </div>
+
+      <!-- ÉTAPE 2 : confirmation + ouverture -->
+      <div id="done">
+        <p class="eyebrow">Accès confirmé</p>
+        <div class="ok-badge">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <span class="mag" id="doneMag"></span>
+        </div>
+        <p class="done-lede">Vos décomptes de congés payés sont disponibles dans votre dossier sécurisé.</p>
+        <div class="open-row">
+          <a class="btn link-btn" id="openLink" href="#" target="_blank" rel="noopener">
+            Ouvrir mes documents
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </a>
+          <button class="btn ghost" id="backBtn" type="button">Changer de magasin</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>Cette page ne fait que vous diriger vers votre dossier&nbsp;; aucune donnée n'y est stockée.</footer>
+  </div>
+
+<script>
+/* =====================================================================
+   CONFIGURATION — À COMPLÉTER
+   ---------------------------------------------------------------------
+   Un objet par magasin. Recopie ICI les MÊMES codes PIN que dans
+   l'outil Variables de paie (un magasin = un code à 4 chiffres).
+
+     nom    : nom affiché du magasin
+     marque : "edgard"  ou  "gdo"   (sert à l'accent couleur)
+     code   : le code PIN du magasin (chaîne entre guillemets)
+     lien   : le lien de partage du SOUS-DOSSIER du magasin
+              - Edgard : lien SharePoint du dossier de ce magasin
+              - GdO    : lien OneDrive du dossier de ce magasin
+              Laisse "" tant que le dossier n'est pas créé.
+
+   ⚠️ Un sous-dossier (et un lien) PAR magasin : ne mets pas le même
+      lien partout, sinon chaque magasin verrait les soldes des autres.
+   ===================================================================== */
+const MAGASINS = [
+  // ——— Edgard Opticiens (SharePoint) ———
+  { nom:"ANGO", marque:"edgard", code:"3653", lien:"https://atheo.sharepoint.com/Magasin%20ANGO/Forms/AllItems.aspx?id=%2FMagasin%20ANGO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=daf5d5e1%2D011a%2D48e9%2D9a03%2D94658b74710a" },
+  { nom:"BIARRO", marque:"edgard", code:"8837", lien:"https://atheo.sharepoint.com/Magasin%20BIARRO/Forms/AllItems.aspx?id=%2FMagasin%20BIARRO%2F5%2DDirecteur%2FSolde%20des%20jours%20CP&viewid=15b1e70c%2D3880%2D4952%2Db7a5%2D1dbe788fd1bb" },
+  { nom:"BORDO", marque:"edgard", code:"6864", lien:"https://atheo.sharepoint.com/Magasin%20BORDO/Forms/AllItems.aspx?id=%2FMagasin%20BORDO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=92e9a5cd%2D03c5%2D4f82%2D8677%2D2c5b521c0929" },
+  { nom:"CAENPO", marque:"edgard", code:"5078", lien:"https://atheo.sharepoint.com/Magasin%20CAENPO/Forms/AllItems.aspx?id=%2FMagasin%20CAENPO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=f0f38b60%2D5325%2D49e2%2Dbe3f%2D44f90b69a1cc" },
+  { nom:"GIRO", marque:"edgard", code:"7935", lien:"https://atheo.sharepoint.com/Magasin%20GIRO/Forms/AllItems.aspx?id=%2FMagasin%20GIRO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=f0251fa7%2D9dc5%2D43e0%2D9dc7%2Dadcad5fbfc3c" },
+  { nom:"HAVRO", marque:"edgard", code:"5194", lien:"https://atheo.sharepoint.com/Magasin%20HAVRO/Forms/AllItems.aspx?id=%2FMagasin%20HAVRO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=48e7edae%2Dfcbc%2D4a96%2Dae87%2D194ca11eb5cd" },
+  { nom:"JISAM", marque:"edgard", code:"7152", lien:"https://atheo.sharepoint.com/Magasin%20JISAM/Forms/AllItems.aspx?id=%2FMagasin%20JISAM%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=a7cea34e%2D54a1%2D44d1%2D9b32%2D70057be57ce2" },
+  { nom:"LYONO", marque:"edgard", code:"7411", lien:"https://atheo.sharepoint.com/Magasin%20LYONO/Forms/AllItems.aspx?id=%2FMagasin%20LYONO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=4d445b53%2D25ef%2D464e%2Dbdda%2Dc7a4b3c7f801" },
+  { nom:"MANSO", marque:"edgard", code:"5142", lien:"https://atheo.sharepoint.com/Magasin%20MANSO/Forms/AllItems.aspx?id=%2FMagasin%20MANSO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=6bc842dc%2D738e%2D48e5%2D83e2%2Dd33a346e7cb3" },
+  { nom:"MARSEILLO", marque:"edgard", code:"2406", lien:"https://atheo.sharepoint.com/Magasin%20MARSEILLO/Forms/AllItems.aspx?id=%2FMagasin%20MARSEILLO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=c43a3757%2D5a3e%2D43c4%2D8fc8%2D35732baf9e93" },
+  { nom:"NANCEO", marque:"edgard", code:"2946", lien:"https://atheo.sharepoint.com/Magasin%20NANCEO/Forms/AllItems.aspx?id=%2FMagasin%20NANCEO%2FDirecteur%2FSolde%20des%20CP&viewid=202f8a7c%2Df8c8%2D4a4a%2Dbf75%2Db8c475e68037" },
+  { nom:"NANTO", marque:"edgard", code:"8694", lien:"https://atheo.sharepoint.com/Magasin%20NANTO/Forms/AllItems.aspx?id=%2FMagasin%20NANTO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=a8164ca0%2D536b%2D47d2%2D9d5b%2D54f1a50bcacd" },
+  { nom:"NICEO", marque:"edgard", code:"5986", lien:"https://atheo.sharepoint.com/Magasin%20NICEO/Forms/AllItems.aspx?id=%2FMagasin%20NICEO%2F5%2DDirecteur%2FSolde%20des%20CP&viewid=531e41b6%2D3c35%2D4e86%2D8048%2D8a19b51c88ce" },
+  { nom:"ORLO", marque:"edgard", code:"4726", lien:"https://atheo.sharepoint.com/Magasin%20ORLO/Forms/AllItems.aspx?id=%2FMagasin%20ORLO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=98bc1196%2Da131%2D4a5d%2D8e97%2D52dd1965c817" },
+  { nom:"REIMO", marque:"edgard", code:"6920", lien:"https://atheo.sharepoint.com/Magasin%20REIMO/Forms/AllItems.aspx?id=%2FMagasin%20REIMO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=b862d1f7%2Df03f%2D416a%2Db929%2D34c9ba459e6d" },
+  { nom:"STRABO", marque:"edgard", code:"2749", lien:"https://atheo.sharepoint.com/Magasin%20STRABO/Forms/AllItems.aspx?id=%2FMagasin%20STRABO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=469857e8%2D9149%2D4353%2D9de6%2Da777557aba85" },
+  { nom:"TURO", marque:"edgard", code:"6750", lien:"https://atheo.sharepoint.com/Magasin%20TURO/Forms/AllItems.aspx?id=%2FMagasin%20TURO%2F5%2DDirecteur%2FSoldes%20Cong%C3%A9s%20Pay%C3%A9s&viewid=a93e52e2%2D29fb%2D4302%2D900a%2D264de99a09e6" },
+
+  // ——— Générale d'Optique (OneDrive) ———
+  { nom:"CHATO", marque:"gdo", code:"6007", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20CHATO%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FCh%C3%A2tellerault%20manager%2FRH%20CHATO%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FCh%C3%A2tellerault%20manager%2FRH%20CHATO%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"CHEMILLO", marque:"gdo", code:"3795", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20CHEMILLO%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FChemill%C3%A9%20manager%2FRH%20CHEMILLO%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FChemill%C3%A9%20manager%2FRH%20CHEMILLO%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"CHOLO", marque:"gdo", code:"9213", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20Cholo%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FCholet%20manager%2FRH%20Cholo%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FCholet%20manager%2FRH%20Cholo%2FSolde%20CP&listurl=%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=fba97ca7%2D23b4%2D4394%2Dae85%2D2c5010936d99" },
+  { nom:"DUNES", marque:"gdo", code:"8843", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20DUNES%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FOlonne%20manager%2FRH%20DUNES%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FOlonne%20manager%2FRH%20DUNES%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"ECUME", marque:"gdo", code:"3087", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20ECUME%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FSt%20Gilles%20manager%2FRH%20ECUME%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FSt%20Gilles%20manager%2FRH%20ECUME%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"FORMIO", marque:"gdo", code:"7930", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20FORMIO%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FFormio%2FTIERS%20PAYANT%2FRH%20FORMIO%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FFormio%2FTIERS%20PAYANT%2FRH%20FORMIO%2FSolde%20CP&listurl=%2Fpersonal%2Fj%5Fpetit%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=fba97ca7%2D23b4%2D4394%2Dae85%2D2c5010936d99" },
+  { nom:"MARAIS", marque:"gdo", code:"1165", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20MARAIS%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FChallans%20manager%2FRH%20MARAIS%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FChallans%20manager%2FRH%20MARAIS%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"MUDO", marque:"gdo", code:"7779", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20MUDO%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FBessines%20manager%2FRH%20MUDO%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FBessines%20manager%2FRH%20MUDO%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+  { nom:"NIORTO", marque:"gdo", code:"5785", lien:"https://atheo-my.sharepoint.com/my?remoteItem=%7B%22mp%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fj%5Fboisseau%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FRH%20NIORTO%22%7D%2C%22rsi%22%3A%7B%22webAbsoluteUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%22%2C%22listFullUrl%22%3A%22https%3A%2F%2Fatheo%2Dmy%2Esharepoint%2Ecom%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%22%2C%22rootFolder%22%3A%22%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FNiort%20Manager%2FRH%20NIORTO%2FSolde%20CP%22%7D%7D&id=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments%2FNiort%20Manager%2FRH%20NIORTO%2FSolde%20CP&listurl=%2Fpersonal%2Fr%5Fguittard%5Fgroupe%2Dedgard%5Fcom%2FDocuments&viewid=75effaf0%2Def11%2D4255%2Dbaed%2D49984c15f2be" },
+];
+
+/* Couleurs d'accent par marque */
+const THEMES = {
+  edgard:{ accent:"#9a7b3f", soft:"#f4efe2", ink:"#6f5827" },          // doré Edgard
+  gdo:   { accent:"#00843D", soft:"#e3f1e9", ink:"#055f2d" },          // vert GdO
+};
+
+/* --------------------------------------------------------------------- */
+const $ = id => document.getElementById(id);
+const sel = $("magasin"), code = $("code"), err = $("err"), errTxt = $("errTxt");
+
+/* Remplit la liste déroulante, groupée par marque */
+(function build(){
+  const groups = {
+    edgard:{ label:"Edgard Opticiens", items:[] },
+    gdo:   { label:"Générale d'Optique", items:[] },
+  };
+  MAGASINS.forEach((m,i)=>{
+    const g = groups[m.marque] || groups.edgard;
+    g.items.push({ i, nom:m.nom });
+  });
+  Object.values(groups).forEach(g=>{
+    if(!g.items.length) return;
+    const og = document.createElement("optgroup");
+    og.label = g.label;
+    g.items.sort((a,b)=> a.nom.localeCompare(b.nom,"fr"))
+      .forEach(it=>{
+        const o = document.createElement("option");
+        o.value = it.i; o.textContent = it.nom;
+        og.appendChild(o);
+      });
+    sel.appendChild(og);
+  });
+})();
+
+function applyTheme(marque){
+  const t = THEMES[marque] || THEMES.edgard;
+  const r = document.documentElement.style;
+  r.setProperty("--accent", t.accent);
+  r.setProperty("--accent-soft", t.soft);
+  r.setProperty("--accent-ink", t.ink);
+}
+
+function showErr(msg){
+  errTxt.textContent = msg;
+  err.hidden = false;
+}
+function clearErr(){ err.hidden = true; }
+
+$("form").addEventListener("submit", e=>{
+  e.preventDefault();
+  clearErr();
+  const idx = sel.value;
+  if(idx==="" ){ showErr("Veuillez choisir votre magasin."); sel.focus(); return; }
+  const m = MAGASINS[Number(idx)];
+  const saisi = code.value.trim();
+  if(!saisi){ showErr("Veuillez saisir votre code."); code.focus(); return; }
+
+  if(saisi !== String(m.code).trim()){
+    showErr("Code incorrect pour ce magasin. En cas d'oubli, contactez les RH.");
+    code.select();
+    return;
+  }
+
+  // Code valide
+  applyTheme(m.marque);
+  $("doneMag").textContent = m.nom;
+  const link = $("openLink");
+  if(m.lien && m.lien !== "#"){
+    link.href = m.lien;
+  }else{
+    link.removeAttribute("href");
+    link.style.pointerEvents = "none";
+    link.style.opacity = ".5";
+    link.textContent = "Dossier pas encore disponible — contactez les RH";
+  }
+  $("gate").style.display = "none";
+  $("done").classList.add("show");
+});
+
+$("backBtn").addEventListener("click", ()=>{
+  $("done").classList.remove("show");
+  $("gate").style.display = "";
+  code.value = ""; sel.selectedIndex = 0; clearErr();
+  // reset accent neutre
+  applyTheme("edgard");
+  sel.focus();
+});
+
+/* efface l'erreur dès qu'on corrige */
+sel.addEventListener("change", clearErr);
+code.addEventListener("input", clearErr);
+</script>
+</body>
+</html>
