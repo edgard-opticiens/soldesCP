@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convertisseur soldes CP — Groupe Edgard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1c1b18;--paper:#faf8f3;--card:#fff;--line:#e7e2d8;--muted:#6c685f;--soft:#f3f0e8;--accent:#9a7b3f;--accent-soft:#f4efe2;--accent-ink:#6f5827;--ok:#1d7a4d;--err:#b3261e}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:"Inter",system-ui,sans-serif;color:var(--ink);background:var(--paper);min-height:100vh;padding:28px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:auto}
+  h1{font-family:"Playfair Display",Georgia,serif;font-weight:600;font-size:26px;margin:0 0 6px}
+  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 10px}
+  .lede{color:var(--muted);font-size:14.5px;margin:0 0 22px}
+  .drop{border:2px dashed var(--line);border-radius:16px;background:var(--card);padding:40px 24px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop svg{color:var(--accent)}
+  .drop .big{font-size:15px;font-weight:600;margin:12px 0 4px}
+  .drop .small{font-size:13px;color:var(--muted)}
+  #report{margin-top:22px}
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:11px 14px;text-align:left}
+  thead th{background:var(--soft);font-size:12px;letter-spacing:.03em;color:var(--muted);font-weight:600}
+  tbody tr+tr td{border-top:1px solid var(--soft)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px}
+  .badge.ok{background:#e3f1e9;color:var(--ok)}
+  .badge.ko{background:#fbeaea;color:var(--err)}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:20px}
+  .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:600;padding:12px 18px;border-radius:11px;color:#fff;background:var(--accent);font-size:15px;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{filter:brightness(.94)}.btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500;font-size:13.5px;padding:10px 14px}
+  .warn{margin-top:14px;background:#fbeaea;border:1px solid #f0c9c9;color:#7a1f1a;border-radius:10px;padding:12px 14px;font-size:13px}
+  .note{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:flex-start}
+  .summary{font-size:13.5px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Groupe Edgard · Outil RH interne</p>
+  <h1>Convertisseur des soldes CP</h1>
+  <p class="lede">Déposez les PDF « Solde des jours CP » exportés de Cegid. La page fabrique le fichier <code>soldes-cp.json</code> à déposer sur OneDrive. Les PDF ne quittent pas votre navigateur.</p>
+
+  <div class="drop" id="drop">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+    <div class="big">Glissez vos PDF ici</div>
+    <div class="small">ou cliquez pour choisir — plusieurs fichiers à la fois</div>
+    <input id="file" type="file" accept="application/pdf" multiple hidden>
+  </div>
+
+  <div id="report"></div>
+
+  <div class="bar" id="bar" style="display:none">
+    <button class="btn" id="dl">Télécharger soldes-cp.json</button>
+    <button class="btn ghost" id="reset">Tout effacer</button>
+    <span class="summary" id="summary"></span>
+  </div>
+
+  <p class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg>
+  Ne déposez le JSON sur OneDrive que si tous les magasins sont au vert. Contrôle automatique : acquis − pris = restant sur chaque période.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ===== parseur validé (identique à la version Python) ===== */
+// Parseur CP — logique portable navigateur (testée ici sous Node via pdfjs)
+const LABELS=["Restants","Acquis","Pris","Restants","Acquis","Pris","Restants"];
+const COLS=["ant_rest","N1_acq","N1_pris","N1_rest","N_acq","N_pris","N_rest"];
+const RXNUM=/^\d+,\d{2}$/, RXMAT=/^(\d{10})\s+(.+)$/;
+
+function parseItems(pages, _ignored){
+  // texte reconstruit dans l'ordre haut->bas, gauche->droite (fiable pour les regex)
+  const ordered=[];
+  for(const items of pages){
+    const byY={}; items.forEach(i=>{ if(i.str.trim()){const k=Math.round(i.y);(byY[k]=byY[k]||[]).push(i);} });
+    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(k=>{ byY[k].sort((a,b)=>a.x0-b.x0).forEach(i=>ordered.push(i.str)); });
+  }
+  const fullText=ordered.join(" ");
+  const magasin=(fullText.match(/Dossier\s+(\S+)/)||[])[1]||"";
+  const arrete=(fullText.match(/Date d'arr\u00eat\u00e9\s*:\s*([\d/]+)/)||[])[1]||"";
+  const per=[...fullText.matchAll(/P\u00e9riode du (\d{2}\/\d{2}\/\d{4}) au (\d{2}\/\d{2}\/\d{4})/g)];
+  let edges=null, etab=null;
+  const etabs={};
+  for(const items of pages){
+    const byY={};
+    items.forEach(i=>{ if(i.str.trim()){ const k=Math.round(i.y); (byY[k]=byY[k]||[]).push(i);} });
+    const lines=Object.keys(byY).map(Number).sort((a,b)=>b-a).map(k=>byY[k].sort((a,b)=>a.x0-b.x0));
+    for(const ln of lines){
+      const strs=ln.map(i=>i.str.trim());
+      if(strs.slice(-7).join("|")===LABELS.join("|")){ edges=ln.slice(-7).map(i=>i.x1); continue; }
+      const txt=strs.join(" ");
+      let m=txt.match(/^Etablissement\s*:\s*(\d+)\s+([A-Za-zÀ-ÿ].*)$/);
+      if(m && !/Date d'arrêté/.test(txt)){ etab=m[1]; etabs[etab]={code:m[1],nom:m[2].trim(),salaries:[]}; continue; }
+      const first=strs[0]||""; const mm=first.match(RXMAT);
+      if(mm && edges){
+        const near=x1=>COLS[[0,1,2,3,4,5,6].reduce((b,i)=>Math.abs(edges[i]-x1)<Math.abs(edges[b]-x1)?i:b,0)];
+        const v={}; COLS.forEach(c=>v[c]=null);
+        for(let k=1;k<ln.length;k++){ const it=ln[k]; if(RXNUM.test(it.str.trim())) v[near(it.x1)]=parseFloat(it.str.trim().replace(',','.')); }
+        const z=k=>v[k]==null?0:Math.round(v[k]*100)/100;
+        if(!etab){ etab="000"; etabs["000"]={code:"000",nom:magasin,salaries:[]}; }
+        etabs[etab].salaries.push({matricule:mm[1],nom:mm[2].trim(),
+          report:z("ant_rest"),
+          n1:{acquis:z("N1_acq"),pris:z("N1_pris"),restant:z("N1_rest")},
+          n:{acquis:z("N_acq"),pris:z("N_pris"),restant:z("N_rest")}});
+      }
+    }
+  }
+  return {magasin,arrete,
+    periodes:{n1:per[0]?{debut:per[0][1],fin:per[0][2]}:null,n:per[1]?{debut:per[1][1],fin:per[1][2]}:null},
+    etablissements:Object.values(etabs),
+    nb_salaries:Object.values(etabs).reduce((s,e)=>s+e.salaries.length,0)};
+}
+function controle(data){
+  const err=[];
+  for(const et of data.etablissements) for(const s of et.salaries){
+    if(Math.round((s.report+s.n1.acquis-s.n1.pris)*100)/100!==s.n1.restant) err.push(`${data.magasin}/${s.nom} N-1`);
+    if(Math.round((s.n.acquis-s.n.pris)*100)/100!==s.n.restant) err.push(`${data.magasin}/${s.nom} N`);
+  }
+  return err;
+}
+/* ========================================================== */
+
+const $=id=>document.getElementById(id);
+const resultat={};
+const fr=n=>Number(n).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+async function extractPages(buf){
+  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  const pages=[];
+  for(let p=1;p<=doc.numPages;p++){
+    const page=await doc.getPage(p); const tc=await page.getTextContent();
+    pages.push(tc.items.map(i=>({str:i.str,x0:i.transform[4],x1:i.transform[4]+i.width,y:i.transform[5]})));
+  }
+  return pages;
+}
+
+async function handleFiles(files){
+  for(const f of files){
+    if(!f.name.toLowerCase().endsWith(".pdf")) continue;
+    try{
+      const buf=await f.arrayBuffer();
+      const pages=await extractPages(buf);
+      const data=parseItems(pages);
+      if(!data.magasin){ resultat["? "+f.name]={_erreur:"Magasin non reconnu",nb_salaries:0,etablissements:[]}; continue; }
+      data._erreurs=controle(data);
+      resultat[data.magasin]=data;
+    }catch(e){ resultat["? "+f.name]={_erreur:e.message||"Lecture impossible",nb_salaries:0,etablissements:[]}; }
+  }
+  render();
+}
+
+function render(){
+  const noms=Object.keys(resultat).sort((a,b)=>a.localeCompare(b,"fr"));
+  if(!noms.length){ $("report").innerHTML=""; $("bar").style.display="none"; return; }
+  let rows="", totSal=0, totErr=0, ko=0;
+  for(const nom of noms){
+    const d=resultat[nom];
+    if(d._erreur){ ko++; rows+=`<tr><td>${nom}</td><td class="num">—</td><td class="num">—</td><td><span class="badge ko">${d._erreur}</span></td></tr>`; continue; }
+    totSal+=d.nb_salaries;
+    const nb=(d._erreurs||[]).length; totErr+=nb; if(nb)ko++;
+    const etab=d.etablissements.length>1?` · ${d.etablissements.length} étab.`:"";
+    const badge=nb?`<span class="badge ko">${nb} écart(s)</span>`:`<span class="badge ok">OK</span>`;
+    rows+=`<tr><td><strong>${d.magasin}</strong><span style="color:var(--muted)">${etab}</span></td><td class="num">${d.nb_salaries}</td><td class="num">${d.arrete||"—"}</td><td>${badge}</td></tr>`;
+  }
+  $("report").innerHTML=`<table><thead><tr><th>Magasin</th><th class="num">Salariés</th><th class="num">Arrêté au</th><th>Contrôle</th></tr></thead><tbody>${rows}</tbody></table>`
+    + (totErr?`<div class="warn"><strong>${totErr} écart(s) de cohérence détecté(s).</strong> Vérifie le PDF concerné avant de déposer le fichier — ou envoie-le pour analyse.</div>`:"");
+  $("summary").textContent=`${noms.length-ko} magasin(s) OK · ${totSal} salariés`+(ko?` · ${ko} à vérifier`:"");
+  $("bar").style.display="flex";
+  $("dl").disabled=(noms.length-ko)===0;
+}
+
+/* propre : ne garder que les champs utiles dans le JSON exporté */
+function clean(){
+  const out={};
+  for(const [k,d] of Object.entries(resultat)){
+    if(d._erreur) continue;
+    out[d.magasin]={magasin:d.magasin,arrete:d.arrete,periodes:d.periodes,etablissements:d.etablissements,nb_salaries:d.nb_salaries};
+  }
+  return out;
+}
+
+$("dl").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(clean(),null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="soldes-cp.json"; a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("reset").addEventListener("click",()=>{ for(const k in resultat) delete resultat[k]; render(); });
+
+const drop=$("drop"), file=$("file");
+drop.addEventListener("click",()=>file.click());
+file.addEventListener("change",e=>handleFiles(e.target.files));
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>handleFiles(e.dataTransfer.files));
+</script>
+</body>
+</html>
