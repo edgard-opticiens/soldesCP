@@ -117,7 +117,7 @@ function parseItems(pages, _ignored){
 function controle(data){
   const err=[];
   for(const et of data.etablissements) for(const s of et.salaries){
-    if(Math.round((s.report+s.n1.acquis-s.n1.pris)*100)/100!==s.n1.restant) err.push(`${data.magasin}/${s.nom} N-1`);
+    if(Math.round((s.n1.acquis-s.n1.pris)*100)/100!==s.n1.restant) err.push(`${data.magasin}/${s.nom} N-1`);
     if(Math.round((s.n.acquis-s.n.pris)*100)/100!==s.n.restant) err.push(`${data.magasin}/${s.nom} N`);
   }
   return err;
@@ -145,6 +145,8 @@ async function handleFiles(files){
       const buf=await f.arrayBuffer();
       const pages=await extractPages(buf);
       const data=parseItems(pages);
+      const magFichier=f.name.replace(/\.pdf$/i,"").split("-")[0].trim().toUpperCase();
+      if(magFichier) data.magasin=magFichier;
       if(!data.magasin){ resultat["? "+f.name]={_erreur:"Magasin non reconnu",nb_salaries:0,etablissements:[]}; continue; }
       data._erreurs=controle(data);
       resultat[data.magasin]=data;
