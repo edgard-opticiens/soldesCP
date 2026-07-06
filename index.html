@@ -70,8 +70,10 @@
   tbody td{border-top:1px solid var(--soft); text-align:right; font-variant-numeric:tabular-nums}
   tbody td.name{text-align:left; font-weight:600}
   td.sep,th.sep{border-left:1px solid var(--line)}
+  td.rest{color:var(--accent-ink); background:var(--accent-soft)}
   td.solde{color:var(--accent-ink); background:var(--accent-soft); font-weight:600}
-  td.ant{color:var(--muted)}
+  th.grp.rest{color:var(--accent-ink); background:var(--accent-soft)}
+  .sub th.rest,.sub th.solde{color:var(--accent-ink); background:var(--accent-soft)}
   @media (max-width:560px){ .card{padding:24px 18px} table{font-size:12px} th,td{padding:7px 3px} h1{font-size:23px} .wrap{max-width:100%} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   @media print{ body{background:#fff;padding:0} .card{border:0;box-shadow:none} .noprint{display:none!important} .card::before{display:none} }
@@ -211,10 +213,10 @@ function render(data, marque){
     const rep=v=>(v==null||Number(v)===0)?"—":fr(v);
     const rows = sal.map(s=>{
       const a=s.n1||{}, b=s.n||{};
-      const cAnt = hasReport ? `<td class="ant">${rep(s.report)}</td>` : "";
+      const cAnt = hasReport ? `<td class="rest">${rep(s.report)}</td>` : "";
       return `<tr>
         <td class="name">${s.nom||""}</td>${cAnt}
-        <td class="${hasReport?'sep':''}">${num(a.acquis)}</td><td>${pris(a.pris)}</td><td>${num(a.restant)}</td>
+        <td class="${hasReport?'sep':''}">${num(a.acquis)}</td><td>${pris(a.pris)}</td><td class="rest">${num(a.restant)}</td>
         <td class="sep">${num(b.acquis)}</td><td>${pris(b.pris)}</td><td class="solde">${num(b.restant)}</td>
       </tr>`;
     }).join("");
@@ -223,11 +225,11 @@ function render(data, marque){
       ? `<colgroup><col style="width:23%"><col style="width:11%"><col><col><col><col><col><col></colgroup>`
       : `<colgroup><col style="width:26%"><col><col><col><col><col><col></colgroup>`;
     const head1 = hasReport
-      ? `<tr><th></th><th class="grp" rowspan="2" style="vertical-align:bottom">Antérieur</th><th class="grp sep" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th></tr>`
+      ? `<tr><th></th><th class="grp rest" rowspan="2" style="vertical-align:bottom">Antérieur</th><th class="grp sep" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th></tr>`
       : `<tr><th></th><th class="grp" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th></tr>`;
     const head2 = hasReport
-      ? `<tr class="sub"><th class="name">Salarié</th><th class="sep">Acquis</th><th>Pris</th><th>Restant</th><th class="sep">Acquis</th><th>Pris</th><th>Restant</th></tr>`
-      : `<tr class="sub"><th class="name">Salarié</th><th>Acquis</th><th>Pris</th><th>Restant</th><th class="sep">Acquis</th><th>Pris</th><th>Restant</th></tr>`;
+      ? `<tr class="sub"><th class="name">Salarié</th><th class="sep">Acquis</th><th>Pris</th><th class="rest">Restant</th><th class="sep">Acquis</th><th>Pris</th><th class="solde">Restant</th></tr>`
+      : `<tr class="sub"><th class="name">Salarié</th><th>Acquis</th><th>Pris</th><th class="rest">Restant</th><th class="sep">Acquis</th><th>Pris</th><th class="solde">Restant</th></tr>`;
     return `${titre}
       <table>
         ${colgroup}
