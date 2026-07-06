@@ -114,6 +114,10 @@
             <button class="btn ghost" id="backBtn" type="button">Retour</button>
           </div>
         </div>
+        <div id="periodeWrap" class="noprint" style="display:none; align-items:center; gap:9px; margin:0 0 14px">
+          <label for="periode" style="font-size:13px; color:var(--muted); font-weight:600">Période&nbsp;:</label>
+          <select id="periode" style="width:auto; min-width:150px; padding:8px 34px 8px 12px; font-weight:600"></select>
+        </div>
         <p class="res-sub" id="resSub"></p>
         <div id="tables"></div>
       </div>
@@ -194,15 +198,37 @@ $("form").addEventListener("submit", async e=>{
   }finally{ loading(false); }
 });
 
+const dparse=s=>{ const m=String(s||"").match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0; };
+
 function render(data, marque){
   const t=applyTheme(marque);
   $("resBrand").textContent=t.label;
   $("resMag").textContent="Magasin "+(data.magasin||sel.value);
-  const p=data.periodes||{};
-  $("resSub").textContent = data.arrete ? ("Soldes arrêtés au "+data.arrete) : "";
+
+  // Historique : soit data.historique (nouveau format), soit un instantané unique (ancien format)
+  let snaps = (data.historique && data.historique.length) ? data.historique.slice() : [data];
+  snaps.sort((a,b)=> dparse(b.arrete)-dparse(a.arrete));   // plus récent en premier
+  render.snaps = snaps; render.marque = marque;
+
+  const per=$("periode"), wrap=$("periodeWrap");
+  if(snaps.length>1){
+    per.innerHTML = snaps.map((s,i)=>`<option value="${i}">${s.arrete||("Période "+(i+1))}</option>`).join("");
+    per.value="0"; wrap.style.display="flex";
+  }else{
+    wrap.style.display="none";
+  }
+
+  renderSnapshot(snaps[0]);
+  $("gate").style.display="none";
+  $("result").classList.add("show");
+}
+
+function renderSnapshot(snap){
+  const p=snap.periodes||{};
+  $("resSub").textContent = snap.arrete ? ("Soldes arrêtés au "+snap.arrete) : "";
   const p1 = p.n1 ? `${p.n1.debut} → ${p.n1.fin}` : "Période précédente";
   const p2 = p.n ? `${p.n.debut} → ${p.n.fin}` : "Période en cours";
-  const etabs = data.etablissements || [];
+  const etabs = snap.etablissements || [];
   const multi = etabs.length>1;
 
   $("tables").innerHTML = etabs.map(et=>{
@@ -237,10 +263,12 @@ function render(data, marque){
         <tbody>${rows}</tbody>
       </table>`;
   }).join("");
-
-  $("gate").style.display="none";
-  $("result").classList.add("show");
 }
+
+$("periode").addEventListener("change",e=>{
+  const s=(render.snaps||[])[Number(e.target.value)];
+  if(s) renderSnapshot(s);
+});
 
 $("backBtn").addEventListener("click",()=>{
   $("result").classList.remove("show");
