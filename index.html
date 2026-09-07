@@ -238,22 +238,27 @@ function cascadePool(report, n1restant, nrestant, totaux){
     n: Math.round((nrestant-usedN)*100)/100
   };
 }
+function recalculerLigne(tr){
+  const report=Number(tr.dataset.report), n1r=Number(tr.dataset.n1), nr=Number(tr.dataset.n);
+  const cells=[...tr.querySelectorAll('.mcell')];
+  const totaux = cells.map(c=>{
+    const reel = Number(c.dataset.reel)||0;
+    const manuel = Number(c.querySelector('input').value)||0;
+    return reel+manuel;
+  });
+  const c=cascadePool(report,n1r,nr,totaux);
+  const antEl=tr.querySelector('.cAnt'), n1El=tr.querySelector('.cN1'), nEl=tr.querySelector('.cN');
+  if(antEl) antEl.textContent = c.anterieur>0 ? fr(c.anterieur) : '—';
+  if(n1El) n1El.textContent = fr(c.n1);
+  if(nEl) nEl.textContent = fr(c.n);
+}
 function attacherCascade(){
+  document.querySelectorAll('table tbody tr').forEach(tr=>{
+    recalculerLigne(tr);
+  });
   document.querySelectorAll('.mcell input').forEach(inp=>{
     inp.addEventListener('input', e=>{
-      const tr=e.target.closest('tr');
-      const report=Number(tr.dataset.report), n1r=Number(tr.dataset.n1), nr=Number(tr.dataset.n);
-      const cells=[...tr.querySelectorAll('.mcell')];
-      const totaux = cells.map(c=>{
-        const reel = Number(c.dataset.reel)||0;
-        const manuel = Number(c.querySelector('input').value)||0;
-        return reel+manuel;
-      });
-      const c=cascadePool(report,n1r,nr,totaux);
-      const antEl=tr.querySelector('.cAnt'), n1El=tr.querySelector('.cN1'), nEl=tr.querySelector('.cN');
-      if(antEl) antEl.textContent = c.anterieur>0 ? fr(c.anterieur) : '—';
-      if(n1El) n1El.textContent = fr(c.n1);
-      if(nEl) nEl.textContent = fr(c.n);
+      recalculerLigne(e.target.closest('tr'));
     });
   });
 }
