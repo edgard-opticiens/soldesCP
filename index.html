@@ -77,11 +77,16 @@
   th.grp.rest{color:var(--accent-ink)}
   .sub th.rest,.sub th.solde{color:var(--accent-ink)}
 
-  .mcell{padding:8px 6px !important; vertical-align:top}
-  .mcell-inner{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:52px}
-  .mreal{font-size:10.5px; font-weight:700; color:#2E7D4F; background:rgba(46,125,79,.1); border-radius:5px; padding:1px 6px; white-space:nowrap}
-  .mcell input{width:44px; text-align:center; border:1px solid var(--line); border-radius:6px; padding:5px 3px; font-size:.78rem; font-family:inherit; background:#FCFBF8; color:var(--ink)}
-  .mcell input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft)}
+  .mcell{padding:10px 5px !important; vertical-align:middle}
+  .mcell-inner{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-width:54px; min-height:34px}
+  .mreal{font-size:10px; font-weight:600; color:#2E7D4F; background:rgba(46,125,79,.09); border:1px solid rgba(46,125,79,.22); border-radius:20px; padding:2px 9px; white-space:nowrap; letter-spacing:.01em}
+  .mcell input{width:40px; text-align:center; border:1px solid var(--line); border-radius:8px; padding:6px 2px; font-size:.76rem; font-family:inherit; background:var(--card); color:var(--ink); transition:border-color .15s, box-shadow .15s; -moz-appearance:textfield}
+  .mcell input::-webkit-outer-spin-button,.mcell input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .mcell input::placeholder{color:#c7c2b5; font-size:1.05rem; line-height:1}
+  .mcell input:hover{border-color:#d8d2c2}
+  .mcell input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  thead .sub th{padding-bottom:10px}
+  tbody tr td{padding-top:14px; padding-bottom:14px}
   .mtotal{font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums}
 
   @media (max-width:560px){ .card{padding:24px 18px} table{font-size:12px} th,td{padding:8px 4px} h1{font-size:23px} .wrap{max-width:100%} }
@@ -321,7 +326,7 @@ function renderSnapshot(snap){
       });
       const monthCells = MOIS_SIMU.map((mm,mi)=>{
         const badge = reel[mi]>0 ? `<span class="mreal">${fr(reel[mi])}j pris</span>` : "";
-        return `<td class="mcell" data-reel="${reel[mi]}"><div class="mcell-inner">${badge}<input type="number" min="0" step="0.5" value="" placeholder="+ jours"></div></td>`;
+        return `<td class="mcell" data-reel="${reel[mi]}"><div class="mcell-inner">${badge}<input type="number" min="0" step="0.5" value="" placeholder="–" aria-label="Jours ajoutés pour ${mm.label}"></div></td>`;
       }).join("");
       return `<tr data-report="${report}" data-n1="${a.restant||0}" data-n="${b.restant||0}" data-n1pris="${a.pris||0}" data-npris="${b.pris||0}">
         <td class="name">${s.nom||""}</td><td class="rest cAnt">${rep(report)}</td>
