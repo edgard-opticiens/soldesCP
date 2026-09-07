@@ -235,11 +235,14 @@ function cascadePool(report, n1restant, nrestant, totaux){
   return {
     anterieur: Math.round((report-usedAnt)*100)/100,
     n1: Math.round((n1restant-usedN1)*100)/100,
-    n: Math.round((nrestant-usedN)*100)/100
+    n: Math.round((nrestant-usedN)*100)/100,
+    usedN1: Math.round(usedN1*100)/100,
+    usedN: Math.round(usedN*100)/100
   };
 }
 function recalculerLigne(tr){
   const report=Number(tr.dataset.report), n1r=Number(tr.dataset.n1), nr=Number(tr.dataset.n);
+  const n1prisOrigine=Number(tr.dataset.n1pris)||0, nprisOrigine=Number(tr.dataset.npris)||0;
   const cells=[...tr.querySelectorAll('.mcell')];
   const totaux = cells.map(c=>{
     const reel = Number(c.dataset.reel)||0;
@@ -248,9 +251,12 @@ function recalculerLigne(tr){
   });
   const c=cascadePool(report,n1r,nr,totaux);
   const antEl=tr.querySelector('.cAnt'), n1El=tr.querySelector('.cN1'), nEl=tr.querySelector('.cN');
+  const pris1El=tr.querySelector('.cPris1'), prisNEl=tr.querySelector('.cPrisN');
   if(antEl) antEl.textContent = c.anterieur>0 ? fr(c.anterieur) : '—';
   if(n1El) n1El.textContent = fr(c.n1);
   if(nEl) nEl.textContent = fr(c.n);
+  if(pris1El){ const v=n1prisOrigine+c.usedN1; pris1El.textContent = v>0 ? fr(v) : '—'; }
+  if(prisNEl){ const v=nprisOrigine+c.usedN; prisNEl.textContent = v>0 ? fr(v) : '—'; }
 }
 function attacherCascade(){
   document.querySelectorAll('table tbody tr').forEach(tr=>{
@@ -317,10 +323,10 @@ function renderSnapshot(snap){
         const badge = reel[mi]>0 ? `<span class="mreal">${fr(reel[mi])}j pris</span>` : "";
         return `<td class="mcell" data-reel="${reel[mi]}"><div class="mcell-inner">${badge}<input type="number" min="0" step="0.5" value="" placeholder="+ jours"></div></td>`;
       }).join("");
-      return `<tr data-report="${report}" data-n1="${a.restant||0}" data-n="${b.restant||0}">
+      return `<tr data-report="${report}" data-n1="${a.restant||0}" data-n="${b.restant||0}" data-n1pris="${a.pris||0}" data-npris="${b.pris||0}">
         <td class="name">${s.nom||""}</td><td class="rest cAnt">${rep(report)}</td>
-        <td class="sep">${num(a.acquis)}</td><td>${pris(a.pris)}</td><td class="rest cN1">${num(a.restant)}</td>
-        <td class="sep">${num(b.acquis)}</td><td>${pris(b.pris)}</td><td class="solde cN">${num(b.restant)}</td>
+        <td class="sep">${num(a.acquis)}</td><td class="cPris1">${pris(a.pris)}</td><td class="rest cN1">${num(a.restant)}</td>
+        <td class="sep">${num(b.acquis)}</td><td class="cPrisN">${pris(b.pris)}</td><td class="solde cN">${num(b.restant)}</td>
         ${monthCells}
       </tr>`;
     }).join("");
