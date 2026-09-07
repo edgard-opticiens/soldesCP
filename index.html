@@ -71,6 +71,9 @@
   tbody td.name{text-align:left; font-weight:600}
   td.sep,th.sep{border-left:1px solid var(--line)}
   td.rest{color:var(--accent-ink); background:var(--accent-soft)}
+  .mcell{padding:4px !important}
+  .mcell input{width:34px;text-align:center;border:1px solid var(--line,#ddd);border-radius:5px;padding:3px 2px;font-size:.72rem;font-family:inherit;background:#FCFBF8}
+  .mcell input.prefilled{background:rgba(46,125,79,.08);border-color:#2E7D4F;color:#2E7D4F;font-weight:600}
   td.solde{color:var(--accent-ink); background:var(--accent-soft); font-weight:600}
   th.grp.rest{color:var(--accent-ink); background:var(--accent-soft)}
   .sub th.rest,.sub th.solde{color:var(--accent-ink); background:var(--accent-soft)}
@@ -198,12 +201,59 @@ $("form").addEventListener("submit", async e=>{
   }finally{ loading(false); }
 });
 
+const MOIS_SIMU = [
+  {label:'Sept 26', y:2026, m:9}, {label:'Oct 26', y:2026, m:10}, {label:'Nov 26', y:2026, m:11},
+  {label:'Déc 26', y:2026, m:12}, {label:'Janv 27', y:2027, m:1}, {label:'Févr 27', y:2027, m:2},
+  {label:'Mars 27', y:2027, m:3}, {label:'Avr 27', y:2027, m:4}, {label:'Mai 27', y:2027, m:5}
+];
+function normalizeNom(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toUpperCase();
+}
+function parseISODate(d){
+  if(!d) return null;
+  const dt=new Date(d+'T00:00:00Z');
+  return isNaN(dt.getTime())?null:dt;
+}
+function moisIndexPourDate(dateStr){
+  const d=parseISODate(dateStr);
+  if(!d) return -1;
+  return MOIS_SIMU.findIndex(mm=>mm.y===d.getUTCFullYear() && mm.m===(d.getUTCMonth()+1));
+}
+function cascadePool(report, n1restant, nrestant, simu){
+  const total=simu.reduce((s,v)=>s+(Number(v)||0),0);
+  let reste=total;
+  const usedAnt=Math.min(report,reste); reste-=usedAnt;
+  const usedN1=Math.min(n1restant,reste); reste-=usedN1;
+  const usedN=Math.min(nrestant,reste); reste-=usedN;
+  return {
+    anterieur: Math.round((report-usedAnt)*100)/100,
+    n1: Math.round((n1restant-usedN1)*100)/100,
+    n: Math.round((nrestant-usedN)*100)/100
+  };
+}
+function attacherCascade(){
+  document.querySelectorAll('.mcell input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const tr=e.target.closest('tr');
+      const report=Number(tr.dataset.report), n1r=Number(tr.dataset.n1), nr=Number(tr.dataset.n);
+      const inputs=[...tr.querySelectorAll('.mcell input')];
+      const simu=inputs.map(i=>Number(i.value)||0);
+      const c=cascadePool(report,n1r,nr,simu);
+      const antEl=tr.querySelector('.cAnt'), n1El=tr.querySelector('.cN1'), nEl=tr.querySelector('.cN');
+      if(antEl) antEl.textContent = c.anterieur>0 ? fr(c.anterieur) : '—';
+      if(n1El) n1El.textContent = fr(c.n1);
+      if(nEl) nEl.textContent = fr(c.n);
+    });
+  });
+}
+
 const dparse=s=>{ const m=String(s||"").match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0; };
 
 function render(data, marque){
   const t=applyTheme(marque);
   $("resBrand").textContent=t.label;
   $("resMag").textContent="Magasin "+(data.magasin||sel.value);
+  render.futuresCP = data.futuresCP || [];
 
   // Historique : soit data.historique (nouveau format), soit un instantané unique (ancien format)
   let snaps = (data.historique && data.historique.length) ? data.historique.slice() : [data];
@@ -230,32 +280,39 @@ function renderSnapshot(snap){
   const p2 = p.n ? `${p.n.debut} → ${p.n.fin}` : "Période en cours";
   const etabs = snap.etablissements || [];
   const multi = etabs.length>1;
+  const futures = render.futuresCP || [];
 
   $("tables").innerHTML = etabs.map(et=>{
     const sal = et.salaries||[];
-    const hasReport = sal.some(s=>Number(s.report||0)!==0);   // colonne Antérieur seulement si besoin
     const num=v=>(v==null)?"—":fr(v);
     const pris=v=>(v==null||Number(v)===0)?"—":fr(v);
     const rep=v=>(v==null||Number(v)===0)?"—":fr(v);
     const rows = sal.map(s=>{
       const a=s.n1||{}, b=s.n||{};
-      const cAnt = hasReport ? `<td class="rest">${rep(s.report)}</td>` : "";
-      return `<tr>
-        <td class="name">${s.nom||""}</td>${cAnt}
-        <td class="${hasReport?'sep':''}">${num(a.acquis)}</td><td>${pris(a.pris)}</td><td class="rest">${num(a.restant)}</td>
-        <td class="sep">${num(b.acquis)}</td><td>${pris(b.pris)}</td><td class="solde">${num(b.restant)}</td>
+      const report = Number(s.report||0);
+      const key = normalizeNom(s.nom);
+      const simu = MOIS_SIMU.map(()=>0);
+      const prefilled = MOIS_SIMU.map(()=>false);
+      futures.forEach(f=>{
+        if(normalizeNom((f.nom||'')+(f.prenom||'')) !== key) return;
+        const mi = moisIndexPourDate(f.dateDebut);
+        if(mi>=0){ simu[mi]+=f.nbJours; prefilled[mi]=true; }
+      });
+      const monthCells = MOIS_SIMU.map((mm,mi)=>{
+        const pf = prefilled[mi] ? ' prefilled' : '';
+        return `<td class="mcell"><input type="number" min="0" step="0.5" value="${simu[mi]||''}" placeholder="—" class="${pf.trim()}"></td>`;
+      }).join("");
+      return `<tr data-report="${report}" data-n1="${a.restant||0}" data-n="${b.restant||0}">
+        <td class="name">${s.nom||""}</td><td class="rest cAnt">${rep(report)}</td>
+        <td class="sep">${num(a.acquis)}</td><td>${pris(a.pris)}</td><td class="rest cN1">${num(a.restant)}</td>
+        <td class="sep">${num(b.acquis)}</td><td>${pris(b.pris)}</td><td class="solde cN">${num(b.restant)}</td>
+        ${monthCells}
       </tr>`;
     }).join("");
     const titre = multi ? `<div class="etab-title">Établissement ${et.code} — ${et.nom}</div>` : "";
-    const colgroup = hasReport
-      ? `<colgroup><col style="width:23%"><col style="width:11%"><col><col><col><col><col><col></colgroup>`
-      : `<colgroup><col style="width:26%"><col><col><col><col><col><col></colgroup>`;
-    const head1 = hasReport
-      ? `<tr><th></th><th class="grp rest" rowspan="2" style="vertical-align:bottom">Antérieur</th><th class="grp sep" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th></tr>`
-      : `<tr><th></th><th class="grp" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th></tr>`;
-    const head2 = hasReport
-      ? `<tr class="sub"><th class="name">Salarié</th><th class="sep">Acquis</th><th>Pris</th><th class="rest">Restant</th><th class="sep">Acquis</th><th>Pris</th><th class="solde">Restant</th></tr>`
-      : `<tr class="sub"><th class="name">Salarié</th><th>Acquis</th><th>Pris</th><th class="rest">Restant</th><th class="sep">Acquis</th><th>Pris</th><th class="solde">Restant</th></tr>`;
+    const colgroup = `<colgroup><col style="width:16%"><col style="width:8%"><col><col><col><col><col><col>${MOIS_SIMU.map(()=>'<col style="width:5%">').join("")}</colgroup>`;
+    const head1 = `<tr><th></th><th class="grp rest" rowspan="2" style="vertical-align:bottom">Antérieur</th><th class="grp sep" colspan="3">${p1}</th><th class="grp cur sep" colspan="3">${p2}</th><th class="grp sep" colspan="${MOIS_SIMU.length}">CP posés / simulés</th></tr>`;
+    const head2 = `<tr class="sub"><th class="name">Salarié</th><th class="sep">Acquis</th><th>Pris</th><th class="rest">Restant</th><th class="sep">Acquis</th><th>Pris</th><th class="solde">Restant</th>${MOIS_SIMU.map(m=>`<th style="font-size:.68rem">${m.label}</th>`).join("")}</tr>`;
     return `${titre}
       <table>
         ${colgroup}
@@ -263,6 +320,8 @@ function renderSnapshot(snap){
         <tbody>${rows}</tbody>
       </table>`;
   }).join("");
+
+  attacherCascade();
 }
 
 $("periode").addEventListener("change",e=>{
