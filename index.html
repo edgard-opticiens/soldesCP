@@ -143,7 +143,13 @@
 <script>
 /* ============================ CONFIGURATION ============================ */
 /* URL du webhook n8n (onglet Production, après activation du workflow).  */
-const WEBHOOK_URL = "https://edgard-opticiens.app.n8n.cloud/webhook/solde-cp";
+const N8N_AUTH_LOGIN = "https://edgard-opticiens.app.n8n.cloud/webhook/auth-login";
+const N8N_AUTH_READ  = "https://edgard-opticiens.app.n8n.cloud/webhook/secure-read";
+function authPost(url, body){
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(r=>r.json().catch(()=>({ok:false,error:"reponse"})).then(j=>{j.httpStatus=r.status;return j;}));
+}
+const normMag = s=>String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z]/g,"").toUpperCase();
 
 /* Liste des magasins (nom + marque). Les CODES ne sont plus ici : ils    */
 /* sont vérifiés côté n8n. On ne garde que de quoi remplir la liste.      */
@@ -202,11 +208,19 @@ $("form").addEventListener("submit", async e=>{
   if(!saisi){showErr("Veuillez saisir votre code."); return;}
   loading(true);
   try{
-    const url=`${WEBHOOK_URL}?magasin=${encodeURIComponent(magasin)}&code=${encodeURIComponent(saisi)}`;
-    const res=await fetch(url,{method:"GET"});
-    let data=null; try{ data=await res.json(); }catch(_){}
-    if(res.status===401 || (data && data.ok===false)){ showErr("Code incorrect pour ce magasin. En cas d'oubli, contactez les RH."); code.select(); return; }
-    if(!res.ok || !data){ throw new Error("Réponse inattendue"); }
+    const lg=await authPost(N8N_AUTH_LOGIN,{role:"COLLAB",magasin:magasin,code:saisi});
+    if(!lg.ok){
+      if(lg.error==="verrouille"){ showErr("Trop d'essais pour ce magasin. Réessayez dans "+(lg.minutes||15)+" min."); code.value=""; return; }
+      if(lg.error==="incorrect"){ showErr("Code incorrect pour ce magasin. En cas d'oubli, contactez les RH."); code.select(); return; }
+      throw new Error("login");
+    }
+    // Le jeton reste en mémoire le temps de la consultation (rien n'est enregistré sur l'appareil)
+    const rd=await authPost(N8N_AUTH_READ,{token:lg.token,source:"soldes"});
+    if(!rd.ok || !rd.resultat){ throw new Error("lecture"); }
+    const tout=rd.resultat.tout||{}, fut=rd.resultat.futuresCP||{};
+    const key=Object.keys(tout).find(k=>normMag(k)===normMag(magasin));
+    if(!key){ showErr("Aucune donnée de congés pour ce magasin. Contactez les RH."); return; }
+    const data=Object.assign({}, tout[key], {futuresCP: fut[key]||[]});
     render(data, MAGASINS.find(m=>m.nom===magasin)?.marque || "edgard");
   }catch(_){
     showErr("Service momentanément indisponible. Réessayez, ou contactez les RH.");
